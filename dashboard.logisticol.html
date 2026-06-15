@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Monitoramento Logístico</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+         :root {
+            --bg: #0e1620;
+            --panel: #141f2c;
+            --panel-2: #1a2733;
+            --line: #28394a;
+            --text: #e8edf2;
+            --muted: #8aa0b2;
+            --accent: #5ec8d8;
+            --ok: #3fb88c;
+            --warn: #e0a73e;
+            --crit: #e3573f;
+            --crit-bg: rgba(227, 87, 63, 0.14);
+            --warn-bg: rgba(224, 167, 62, 0.12);
+            --ok-bg: rgba(63, 184, 140, 0.10);
+            --radius: 10px;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            padding: 0 0 60px;
+        }
+        /* ===== HEADER ===== */
+        
+        header {
+            padding: 28px 32px 22px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 16px;
+            background: linear-gradient(180deg, #101b27 0%, var(--bg) 100%);
+        }
+        
+        .brand-eyebrow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        
+        h1 {
+            font-family: 'Archivo Expanded', sans-serif;
+            font-weight: 800;
+            font-size: 28px;
+            letter-spacing: 0.01em;
+        }
+        
+        .header-meta {
+            text-align: right;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+        
+        .pulse {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--ok);
+            margin-right: 6px;
+            box-shadow: 0 0 0 0 rgba(63, 184, 140, 0.6);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(63, 184, 140, 0.5);
+            }
+            70% {
+                box-shadow: 0 0 0 7px rgba(63, 184, 140, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(63, 184, 140, 0);
+            }
+        }
+        /* ===== LAYOUT ===== */
+        
+        main {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 24px 32px;
+        }
+        /* ===== FILTER BAR ===== */
+        
+        .filterbar {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            margin-bottom: 22px;
+        }
+        
+        .filterbar .flabel {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+        
+        select {
+            background: var(--panel-2);
+            border: 1px solid var(--line);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            min-width: 160px;
+        }
+        
+        select:focus,
+        button:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        
+        .reset-btn {
+            background: transparent;
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all .15s ease;
+            margin-left: auto;
+        }
+        
+        .reset-btn:hover {
+            color: var(--text);
+            border-color: var(--accent);
+        }
+        /* ===== KPI ROW ===== */
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        
+        .kpi {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 18px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .kpi::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent);
+        }
+        
+        .kpi.crit::before {
+            background: var(--crit);
+        }
+        
+        .kpi.warn::before {
+            background: var(--warn);
+        }
+        
+        .kpi.ok::before {
+            background: var(--ok);
+        }
+        
+        .kpi-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+        
+        .kpi-value {
+            font-family: 'Archivo Expanded', sans-serif;
+            font-weight: 800;
+            font-size: 34px;
+            line-height: 1;
+        }
+        
+        .kpi-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 8px;
+        }
+        
+        .kpi-sub b {
+            color: var(--text);
+        }
+        /* ===== SECTION TITLES ===== */
+        
+        .section-title {
+            font-family: 'Archivo Expanded', sans-serif;
+            font-weight: 800;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text);
+            margin: 30px 0 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--line);
+        }
+        
+        .section-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: -8px;
+            margin-bottom: 14px;
+        }
+        /* ===== GRID PANELS ===== */
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 16px;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 18px 20px;
+        }
+        
+        .panel h3 {
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .panel h3 .tag {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .chart-wrap {
+            position: relative;
+            height: 260px;
+        }
+        
+        .chart-wrap.tall {
+            height: 320px;
+        }
+        /* ===== TABLE (signature element) ===== */
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        thead th {
+            text-align: left;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10.5px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--line);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        
+        thead th:hover {
+            color: var(--accent);
+        }
+        
+        thead th .arrow {
+            font-size: 9px;
+            opacity: .5;
+            margin-left: 3px;
+        }
+        
+        tbody td {
+            padding: 9px 10px;
+            border-bottom: 1px solid #1c2a38;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12.5px;
+        }
+        
+        tbody tr {
+            transition: background .12s ease;
+        }
+        
+        tbody tr:hover {
+            background: #18242f;
+        }
+        
+        tbody tr.row-crit {
+            background: var(--crit-bg);
+        }
+        
+        tbody tr.row-warn {
+            background: var(--warn-bg);
+        }
+        
+        tbody tr.row-ok {
+            background: var(--ok-bg);
+        }
+        
+        .badge {
+            display: inline-block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        
+        .badge.crit {
+            background: var(--crit);
+            color: #1a0d0a;
+        }
+        
+        .badge.warn {
+            background: var(--warn);
+            color: #1f1604;
+        }
+        
+        .badge.ok {
+            background: var(--ok);
+            color: #06251c;
+        }
+        
+        .delay-pos {
+            color: var(--crit);
+            font-weight: 600;
+        }
+        
+        .delay-neg {
+            color: var(--ok);
+            font-weight: 600;
+        }
+        
+        .delay-zero {
+            color: var(--muted);
+        }
+        /* bar inside table for visual priority */
+        
+        .sev-bar-track {
+            width: 90px;
+            height: 6px;
+            background: #1c2a38;
+            border-radius: 3px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        
+        .sev-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+        /* ===== RANKING LIST ===== */
+        
+        .rank-list {
+            list-style: none;
+        }
+        
+        .rank-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid #1c2a38;
+        }
+        
+        .rank-item:last-child {
+            border-bottom: none;
+        }
+        
+        .rank-num {
+            font-family: 'Archivo Expanded', sans-serif;
+            font-weight: 800;
+            font-size: 18px;
+            color: var(--muted);
+            width: 24px;
+        }
+        
+        .rank-num.top {
+            color: var(--crit);
+        }
+        
+        .rank-body {
+            flex: 1;
+        }
+        
+        .rank-name {
+            font-weight: 600;
+            font-size: 13.5px;
+            margin-bottom: 4px;
+        }
+        
+        .rank-meta {
+            font-size: 11.5px;
+            color: var(--muted);
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        
+        .rank-track {
+            width: 100%;
+            height: 6px;
+            background: #1c2a38;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        
+        .rank-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+        /* ===== ALERT BANNER ===== */
+        
+        .alert-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: var(--crit-bg);
+            border: 1px solid rgba(227, 87, 63, 0.4);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            margin-bottom: 22px;
+        }
+        
+        .alert-icon {
+            font-family: 'Archivo Expanded', sans-serif;
+            font-weight: 800;
+            font-size: 18px;
+            color: var(--crit);
+            border: 2px solid var(--crit);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .alert-text {
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .alert-text b {
+            color: var(--crit);
+        }
+        /* ===== EMPTY STATE ===== */
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        /* ===== FOOTER ===== */
+        
+        footer {
+            max-width: 1280px;
+            margin: 30px auto 0;
+            padding: 18px 32px 0;
+            border-top: 1px solid var(--line);
+            font-size: 11.5px;
+            color: var(--muted);
+            font-family: 'IBM Plex Mono', monospace;
+            line-height: 1.7;
+        }
+        /* ===== RESPONSIVE ===== */
+        
+        @media (max-width: 980px) {
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .header-meta {
+                text-align: left;
+            }
+        }
+        
+        @media (max-width: 560px) {
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+            main,
+            header {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+            .filterbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .reset-btn {
+                margin-left: 0;
+            }
+            select {
+                width: 100%;
+            }
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            .pulse {
+                animation: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div>
+            <div class="brand-eyebrow">Desafio dos Dados · Squad Logística</div>
+            <h1>Painel de Monitoramento de Entregas</h1>
+        </div>
+        <div class="header-meta">
+            <div><span class="pulse"></span>Dados atualizados — amostra didática</div>
+            <div id="lastUpdate">10 entregas no período selecionado</div>
+        </div>
+    </header>
+
+    <main>
+
+        <!-- ALERT BANNER -->
+        <div class="alert-banner" id="alertBanner">
+            <div class="alert-icon">!</div>
+            <div class="alert-text" id="alertText"></div>
+        </div>
+
+        <!-- FILTERS -->
+        <div class="filterbar">
+            <span class="flabel">Filtrar por</span>
+            <select id="filterTransp">
+      <option value="">Transportadora — todas</option>
+    </select>
+            <select id="filterRegiao">
+      <option value="">Região — todas</option>
+    </select>
+            <select id="filterStatus">
+      <option value="">Status — todos</option>
+      <option value="atrasado">Atrasado</option>
+      <option value="prazo">No prazo</option>
+    </select>
+            <button class="reset-btn" id="resetBtn">Limpar filtros</button>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi crit">
+                <div class="kpi-label">Entregas atrasadas</div>
+                <div class="kpi-value" id="kpiAtrasadas">—</div>
+                <div class="kpi-sub" id="kpiAtrasadasSub">de — entregas no filtro</div>
+            </div>
+            <div class="kpi warn">
+                <div class="kpi-label">Taxa de atraso</div>
+                <div class="kpi-value" id="kpiTaxa">—</div>
+                <div class="kpi-sub">% das entregas filtradas</div>
+            </div>
+            <div class="kpi crit">
+                <div class="kpi-label">Atraso médio</div>
+                <div class="kpi-value" id="kpiMedio">—</div>
+                <div class="kpi-sub">dias, considerando só atrasos</div>
+            </div>
+            <div class="kpi ok">
+                <div class="kpi-label">Maior atraso</div>
+                <div class="kpi-value" id="kpiMax">—</div>
+                <div class="kpi-sub" id="kpiMaxSub">entrega mais crítica</div>
+            </div>
+        </div>
+
+        <!-- RANKINGS -->
+        <div class="section-title">Comparação entre transportadoras</div>
+        <div class="section-sub">Ranking por taxa de atraso (%) e por atraso médio (dias) — quanto maior a barra, maior o problema operacional.</div>
+        <div class="grid-2">
+            <div class="panel">
+                <h3>Ranking de transportadoras <span class="tag">% de atraso</span></h3>
+                <ul class="rank-list" id="rankTransp"></ul>
+            </div>
+            <div class="panel">
+                <h3>Atraso médio por transportadora <span class="tag">dias</span></h3>
+                <div class="chart-wrap"><canvas id="chartTransp"></canvas></div>
+            </div>
+        </div>
+
+        <!-- REGIONAL -->
+        <div class="section-title">Análise por região</div>
+        <div class="section-sub">Identifica regiões críticas em volume de atrasos e tempo médio excedido.</div>
+        <div class="grid-2">
+            <div class="panel">
+                <h3>Atrasos por região <span class="tag">contagem</span></h3>
+                <div class="chart-wrap"><canvas id="chartRegiaoBar"></canvas></div>
+            </div>
+            <div class="panel">
+                <h3>Distribuição de status <span class="tag">no prazo vs atrasado</span></h3>
+                <div class="chart-wrap"><canvas id="chartStatusDonut"></canvas></div>
+            </div>
+        </div>
+
+        <!-- PRIORIZAÇÃO -->
+        <div class="section-title">Priorização das entregas críticas</div>
+        <div class="section-sub">Tabela ordenável. Linhas destacadas automaticamente por severidade do atraso (vermelho = crítico, amarelo = moderado, verde = no prazo/adiantado). Clique nos cabeçalhos para ordenar.</div>
+        <div class="panel">
+            <h3>Detalhamento das entregas <span class="tag" id="tableCount"></span></h3>
+            <div style="overflow-x:auto">
+                <table id="detailTable">
+                    <thead>
+                        <tr>
+                            <th data-key="id_entrega">ID <span class="arrow">▾</span></th>
+                            <th data-key="transportadora">Transportadora <span class="arrow">▾</span></th>
+                            <th data-key="regiao">Região <span class="arrow">▾</span></th>
+                            <th data-key="prazo_dias">Prazo (dias) <span class="arrow">▾</span></th>
+                            <th data-key="dias_reais">Real (dias) <span class="arrow">▾</span></th>
+                            <th data-key="atraso">Atraso (dias) <span class="arrow">▾</span></th>
+                            <th data-key="status">Severidade <span class="arrow">▾</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+                <div class="empty-state" id="emptyState" style="display:none">Nenhuma entrega corresponde aos filtros selecionados.</div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer>
+        <div>Fonte: amostra didática de 10 entregas (id_entrega, transportadora, regiao, prazo_dias, dias_reais).</div>
+        <div>Atraso (dias) = dias_reais − prazo_dias. Severidade: Crítico (atraso ≥ 4 dias), Atenção (1–3 dias), No prazo (atraso ≤ 0).</div>
+        <div>Desafio dos Dados · Squad Logística — painel interativo de monitoramento de entregas.</div>
+    </footer>
+
+    <script>
+        /* ================= DATA ================= */
+        const RAW_DATA = [{
+            id_entrega: 301,
+            transportadora: "RotaMax",
+            regiao: "Sudeste",
+            prazo_dias: 3,
+            dias_reais: 7
+        }, {
+            id_entrega: 302,
+            transportadora: "ViaCargo",
+            regiao: "Sul",
+            prazo_dias: 5,
+            dias_reais: 5
+        }, {
+            id_entrega: 303,
+            transportadora: "FlashLog",
+            regiao: "Nordeste",
+            prazo_dias: 4,
+            dias_reais: 9
+        }, {
+            id_entrega: 304,
+            transportadora: "RotaMax",
+            regiao: "Norte",
+            prazo_dias: 6,
+            dias_reais: 4
+        }, {
+            id_entrega: 305,
+            transportadora: "ViaCargo",
+            regiao: "Centro-Oeste",
+            prazo_dias: 2,
+            dias_reais: 6
+        }, {
+            id_entrega: 306,
+            transportadora: "FlashLog",
+            regiao: "Sul",
+            prazo_dias: 5,
+            dias_reais: 12
+        }, {
+            id_entrega: 307,
+            transportadora: "RotaMax",
+            regiao: "Sul",
+            prazo_dias: 6,
+            dias_reais: 9
+        }, {
+            id_entrega: 308,
+            transportadora: "ViaCargo",
+            regiao: "Sudeste",
+            prazo_dias: 3,
+            dias_reais: 4
+        }, {
+            id_entrega: 309,
+            transportadora: "FlashLog",
+            regiao: "Norte",
+            prazo_dias: 5,
+            dias_reais: 5
+        }, {
+            id_entrega: 310,
+            transportadora: "ViaCargo",
+            regiao: "Nordeste",
+            prazo_dias: 4,
+            dias_reais: 8
+        }, ];
+
+        // pre-compute derived fields
+        RAW_DATA.forEach(d => {
+            d.atraso = d.dias_reais - d.prazo_dias; // delay in days
+            d.atrasado = d.atraso > 0; // boolean flag
+            if (d.atraso >= 4) d.severidade = 'crit';
+            else if (d.atraso >= 1) d.severidade = 'warn';
+            else d.severidade = 'ok';
+        });
+
+        const COLORS = {
+            crit: '#e3573f',
+            warn: '#e0a73e',
+            ok: '#3fb88c',
+            accent: '#5ec8d8',
+            muted: '#8aa0b2',
+            panel2: '#1a2733'
+        };
+
+        const SEV_LABEL = {
+            crit: 'Crítico',
+            warn: 'Atenção',
+            ok: 'No prazo'
+        };
+
+        /* ================= STATE ================= */
+        let state = {
+            transp: '',
+            regiao: '',
+            status: '',
+            sortKey: 'atraso',
+            sortDir: 'desc'
+        };
+
+        /* ================= INIT FILTERS ================= */
+        function populateFilters() {
+            const transpSet = [...new Set(RAW_DATA.map(d => d.transportadora))].sort();
+            const regiaoSet = [...new Set(RAW_DATA.map(d => d.regiao))].sort();
+
+            const tSel = document.getElementById('filterTransp');
+            transpSet.forEach(t => {
+                const o = document.createElement('option');
+                o.value = t;
+                o.textContent = t;
+                tSel.appendChild(o);
+            });
+
+            const rSel = document.getElementById('filterRegiao');
+            regiaoSet.forEach(r => {
+                const o = document.createElement('option');
+                o.value = r;
+                o.textContent = r;
+                rSel.appendChild(o);
+            });
+
+            tSel.addEventListener('change', e => {
+                state.transp = e.target.value;
+                render();
+            });
+            rSel.addEventListener('change', e => {
+                state.regiao = e.target.value;
+                render();
+            });
+            document.getElementById('filterStatus').addEventListener('change', e => {
+                state.status = e.target.value;
+                render();
+            });
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                state.transp = '';
+                state.regiao = '';
+                state.status = '';
+                tSel.value = '';
+                rSel.value = '';
+                document.getElementById('filterStatus').value = '';
+                render();
+            });
+
+            document.querySelectorAll('#detailTable thead th').forEach(th => {
+                th.addEventListener('click', () => {
+                    const key = th.dataset.key;
+                    if (state.sortKey === key) {
+                        state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        state.sortKey = key;
+                        state.sortDir = 'desc';
+                    }
+                    render();
+                });
+            });
+        }
+
+        /* ================= FILTERED DATA ================= */
+        function getFiltered() {
+            return RAW_DATA.filter(d => {
+                if (state.transp && d.transportadora !== state.transp) return false;
+                if (state.regiao && d.regiao !== state.regiao) return false;
+                if (state.status === 'atrasado' && !d.atrasado) return false;
+                if (state.status === 'prazo' && d.atrasado) return false;
+                return true;
+            });
+        }
+
+        /* ================= RENDER: KPIs ================= */
+        function renderKPIs(data) {
+            const total = data.length;
+            const atrasadas = data.filter(d => d.atrasado);
+            const taxa = total ? (atrasadas.length / total * 100) : 0;
+            const mediaAtraso = atrasadas.length ?
+                atrasadas.reduce((s, d) => s + d.atraso, 0) / atrasadas.length :
+                0;
+
+            let maxDelay = null;
+            data.forEach(d => {
+                if (!maxDelay || d.atraso > maxDelay.atraso) maxDelay = d;
+            });
+
+            document.getElementById('kpiAtrasadas').textContent = atrasadas.length;
+            document.getElementById('kpiAtrasadasSub').textContent = `de ${total} entrega${total===1?'':'s'} no filtro`;
+            document.getElementById('kpiTaxa').textContent = total ? `${taxa.toFixed(0)}%` : '—';
+            document.getElementById('kpiMedio').textContent = atrasadas.length ? `${mediaAtraso.toFixed(1)}d` : '0d';
+
+            if (maxDelay && maxDelay.atraso > 0) {
+                document.getElementById('kpiMax').textContent = `+${maxDelay.atraso}d`;
+                document.getElementById('kpiMaxSub').textContent = `#${maxDelay.id_entrega} · ${maxDelay.transportadora} · ${maxDelay.regiao}`;
+            } else if (maxDelay) {
+                document.getElementById('kpiMax').textContent = `${maxDelay.atraso}d`;
+                document.getElementById('kpiMaxSub').textContent = 'nenhum atraso no filtro';
+            } else {
+                document.getElementById('kpiMax').textContent = '—';
+                document.getElementById('kpiMaxSub').textContent = 'sem dados';
+            }
+        }
+
+        /* ================= RENDER: ALERT BANNER ================= */
+        function renderAlert(data) {
+            const crit = data.filter(d => d.severidade === 'crit');
+            const box = document.getElementById('alertText');
+            const banner = document.getElementById('alertBanner');
+
+            if (crit.length === 0) {
+                banner.style.borderColor = 'rgba(63,184,140,0.4)';
+                banner.style.background = 'rgba(63,184,140,0.10)';
+                banner.querySelector('.alert-icon').style.color = COLORS.ok;
+                banner.querySelector('.alert-icon').style.borderColor = COLORS.ok;
+                box.innerHTML = `Nenhuma entrega em nível <b style="color:${COLORS.ok}">crítico</b> (atraso ≥ 4 dias) no filtro atual.`;
+                return;
+            }
+
+            banner.style.borderColor = 'rgba(227,87,63,0.4)';
+            banner.style.background = 'var(--crit-bg)';
+            banner.querySelector('.alert-icon').style.color = COLORS.crit;
+            banner.querySelector('.alert-icon').style.borderColor = COLORS.crit;
+
+            const worst = [...crit].sort((a, b) => b.atraso - a.atraso)[0];
+            const transpCount = {};
+            crit.forEach(d => transpCount[d.transportadora] = (transpCount[d.transportadora] || 0) + 1);
+            const worstTransp = Object.entries(transpCount).sort((a, b) => b[1] - a[1])[0];
+
+            box.innerHTML = `<b>${crit.length} entrega${crit.length===1?'':'s'} em nível crítico</b> (atraso ≥ 4 dias). ` +
+                `A entrega mais grave é a <b>#${worst.id_entrega}</b> (${worst.transportadora}, região ${worst.regiao}), com <b>+${worst.atraso} dias</b> de atraso. ` +
+                `Transportadora com mais ocorrências críticas: <b>${worstTransp[0]}</b> (${worstTransp[1]} entrega${worstTransp[1]===1?'':'s'}).`;
+        }
+
+        /* ================= RENDER: RANKING LIST ================= */
+        function renderRankTransp(data) {
+            const groups = {};
+            data.forEach(d => {
+                if (!groups[d.transportadora]) groups[d.transportadora] = {
+                    total: 0,
+                    atrasadas: 0,
+                    somaAtraso: 0
+                };
+                groups[d.transportadora].total++;
+                if (d.atrasado) {
+                    groups[d.transportadora].atrasadas++;
+                    groups[d.transportadora].somaAtraso += d.atraso;
+                }
+            });
+
+            const rows = Object.entries(groups).map(([nome, g]) => ({
+                nome,
+                taxa: g.total ? (g.atrasadas / g.total * 100) : 0,
+                total: g.total,
+                atrasadas: g.atrasadas,
+                media: g.atrasadas ? g.somaAtraso / g.atrasadas : 0
+            })).sort((a, b) => b.taxa - a.taxa);
+
+            const list = document.getElementById('rankTransp');
+            list.innerHTML = '';
+
+            if (rows.length === 0) {
+                list.innerHTML = '<div class="empty-state">Sem dados para o filtro selecionado.</div>';
+                return;
+            }
+
+            const maxTaxa = Math.max(...rows.map(r => r.taxa), 1);
+
+            rows.forEach((r, i) => {
+                const color = r.taxa >= 60 ? COLORS.crit : r.taxa >= 30 ? COLORS.warn : COLORS.ok;
+                const li = document.createElement('li');
+                li.className = 'rank-item';
+                li.innerHTML = `
+      <div class="rank-num ${i===0 && r.taxa>0 ? 'top':''}">${i+1}</div>
+      <div class="rank-body">
+        <div class="rank-name">${r.nome}</div>
+        <div class="rank-meta">${r.atrasadas}/${r.total} entregas atrasadas · ${r.taxa.toFixed(0)}% · atraso médio ${r.media.toFixed(1)}d</div>
+        <div class="rank-track"><div class="rank-fill" style="width:${(r.taxa/maxTaxa*100)}%; background:${color}"></div></div>
+      </div>
+    `;
+                list.appendChild(li);
+            });
+        }
+
+        /* ================= CHART INSTANCES ================= */
+        let chartTransp, chartRegiaoBar, chartStatusDonut;
+
+        function renderChartTransp(data) {
+            const groups = {};
+            data.forEach(d => {
+                if (!groups[d.transportadora]) groups[d.transportadora] = {
+                    soma: 0,
+                    count: 0
+                };
+                if (d.atrasado) {
+                    groups[d.transportadora].soma += d.atraso;
+                    groups[d.transportadora].count++;
+                } else if (!groups[d.transportadora].count) groups[d.transportadora].soma = groups[d.transportadora].soma || 0;
+            });
+            // ensure every transportadora present even with 0 atrasos
+            [...new Set(data.map(d => d.transportadora))].forEach(t => {
+                if (!groups[t]) groups[t] = {
+                    soma: 0,
+                    count: 0
+                };
+            });
+
+            const labels = Object.keys(groups);
+            const values = labels.map(t => groups[t].count ? (groups[t].soma / groups[t].count) : 0);
+            const colors = values.map(v => v >= 4 ? COLORS.crit : v >= 1 ? COLORS.warn : COLORS.ok);
+
+            if (chartTransp) chartTransp.destroy();
+            chartTransp = new Chart(document.getElementById('chartTransp'), {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderRadius: 4,
+                        maxBarThickness: 46
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: c => `Atraso médio: ${c.parsed.y.toFixed(1)} dias`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#1c2a38'
+                            },
+                            ticks: {
+                                color: COLORS.muted,
+                                font: {
+                                    family: 'IBM Plex Mono',
+                                    size: 11
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'dias',
+                                color: COLORS.muted,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: COLORS.muted,
+                                font: {
+                                    family: 'IBM Plex Mono',
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderChartRegiao(data) {
+            const groups = {};
+            data.forEach(d => {
+                if (!groups[d.regiao]) groups[d.regiao] = 0;
+                if (d.atrasado) groups[d.regiao]++;
+            });
+            // include zero-count regions present in filter
+            [...new Set(data.map(d => d.regiao))].forEach(r => {
+                if (!(r in groups)) groups[r] = 0;
+            });
+
+            const entries = Object.entries(groups).sort((a, b) => b[1] - a[1]);
+            const labels = entries.map(e => e[0]);
+            const values = entries.map(e => e[1]);
+            const maxV = Math.max(...values, 1);
+            const colors = values.map(v => v === maxV && v > 0 ? COLORS.crit : v > 0 ? COLORS.warn : COLORS.ok);
+
+            if (chartRegiaoBar) chartRegiaoBar.destroy();
+            chartRegiaoBar = new Chart(document.getElementById('chartRegiaoBar'), {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderRadius: 4,
+                        maxBarThickness: 40
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: c => `${c.parsed.x} entrega(s) atrasada(s)`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                color: COLORS.muted,
+                                font: {
+                                    family: 'IBM Plex Mono',
+                                    size: 11
+                                }
+                            },
+                            grid: {
+                                color: '#1c2a38'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: COLORS.muted,
+                                font: {
+                                    family: 'IBM Plex Mono',
+                                    size: 11
+                                }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderChartStatus(data) {
+            const atrasadas = data.filter(d => d.atrasado).length;
+            const noPrazo = data.length - atrasadas;
+
+            if (chartStatusDonut) chartStatusDonut.destroy();
+            chartStatusDonut = new Chart(document.getElementById('chartStatusDonut'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Atrasadas', 'No prazo'],
+                    datasets: [{
+                        data: [atrasadas, noPrazo],
+                        backgroundColor: [COLORS.crit, COLORS.ok],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: COLORS.muted,
+                                font: {
+                                    family: 'Inter',
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: c => `${c.label}: ${c.parsed} (${data.length? (c.parsed/data.length*100).toFixed(0):0}%)`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /* ================= RENDER: TABLE ================= */
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            const empty = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+
+            document.getElementById('tableCount').textContent = `${data.length} registro${data.length===1?'':'s'}`;
+
+            if (data.length === 0) {
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+
+            const sorted = [...data].sort((a, b) => {
+                let av = a[state.sortKey],
+                    bv = b[state.sortKey];
+                if (typeof av === 'string') {
+                    av = av.toLowerCase();
+                    bv = bv.toLowerCase();
+                }
+                if (av < bv) return state.sortDir === 'asc' ? -1 : 1;
+                if (av > bv) return state.sortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            const maxAtraso = Math.max(...RAW_DATA.map(d => d.atraso), 1);
+
+            sorted.forEach(d => {
+                const tr = document.createElement('tr');
+                tr.className = `row-${d.severidade}`;
+
+                const delayClass = d.atraso > 0 ? 'delay-pos' : d.atraso < 0 ? 'delay-neg' : 'delay-zero';
+                const delayText = d.atraso > 0 ? `+${d.atraso}` : `${d.atraso}`;
+                const barColor = d.severidade === 'crit' ? COLORS.crit : d.severidade === 'warn' ? COLORS.warn : COLORS.ok;
+                const barWidth = Math.max(d.atraso, 0) / maxAtraso * 100;
+
+                tr.innerHTML = `
+      <td>#${d.id_entrega}</td>
+      <td>${d.transportadora}</td>
+      <td>${d.regiao}</td>
+      <td>${d.prazo_dias}</td>
+      <td>${d.dias_reais}</td>
+      <td><span class="${delayClass}">${delayText}d</span></td>
+      <td>
+        <span class="sev-bar-track"><span class="sev-bar-fill" style="width:${barWidth}%; background:${barColor}"></span></span>
+        <span class="badge ${d.severidade}">${SEV_LABEL[d.severidade]}</span>
+      </td>
+    `;
+                tbody.appendChild(tr);
+            });
+
+            // update sort arrows
+            document.querySelectorAll('#detailTable thead th').forEach(th => {
+                const arrow = th.querySelector('.arrow');
+                if (th.dataset.key === state.sortKey) {
+                    arrow.textContent = state.sortDir === 'asc' ? '▲' : '▼';
+                    arrow.style.opacity = '1';
+                    arrow.style.color = COLORS.accent;
+                } else {
+                    arrow.textContent = '▾';
+                    arrow.style.opacity = '0.4';
+                    arrow.style.color = '';
+                }
+            });
+        }
+
+        /* ================= MASTER RENDER ================= */
+        function render() {
+            const data = getFiltered();
+            document.getElementById('lastUpdate').textContent = `${data.length} de ${RAW_DATA.length} entregas no filtro atual`;
+            renderKPIs(data);
+            renderAlert(data);
+            renderRankTransp(data);
+            renderChartTransp(data);
+            renderChartRegiao(data);
+            renderChartStatus(data);
+            renderTable(data);
+        }
+
+        populateFilters();
+        render();
+    </script>
+</body>
+
+</html>
